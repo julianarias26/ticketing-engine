@@ -7,6 +7,7 @@ using Testcontainers.Redis;
 using Testcontainers.RabbitMq;
 using TicketingEngine.Infrastructure.Persistence;
 using Xunit;
+using Microsoft.Extensions.Configuration;
 
 namespace TicketingEngine.IntegrationTests;
 
@@ -14,7 +15,7 @@ public sealed class TestingWebAppFactory
     : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithDatabase("ticketing_test")
+        .WithDatabase("ticketing_dev")
         .WithUsername("postgres")
         .WithPassword("postgres")
         .Build();
@@ -26,25 +27,30 @@ public sealed class TestingWebAppFactory
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        builder.ConfigureAppConfiguration((context, configBuilder) =>
+        {
+            var inMemorySettings = new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Postgres"] = _postgres.GetConnectionString(),
+                ["Redis:ConnectionString"] = _redis.GetConnectionString(),
+                ["RabbitMQ:Host"] = _rabbit.Hostname
+            };
+            configBuilder.AddInMemoryCollection(inMemorySettings);
+        });
+
         builder.ConfigureServices(services =>
         {
-            // Replace Postgres connection
+            // Replace Postgres connection for EF Core
             var dbDescriptor = services.SingleOrDefault(
                 d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
             if (dbDescriptor is not null) services.Remove(dbDescriptor);
 
             services.AddDbContext<AppDbContext>(opts =>
                 opts.UseNpgsql(_postgres.GetConnectionString()));
-
-            // Override connection strings
-            builder.UseSetting(
-                "ConnectionStrings:Postgres", _postgres.GetConnectionString());
-            builder.UseSetting(
-                "Redis:ConnectionString", _redis.GetConnectionString());
-            builder.UseSetting(
-                "RabbitMQ:Host", _rabbit.Hostname);
         });
     }
+
+
 
     public async Task InitializeAsync()
     {
