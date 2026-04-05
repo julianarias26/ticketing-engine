@@ -1,5 +1,6 @@
 using Hangfire;
 using Hangfire.PostgreSql;
+using Humanizer.Configuration;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -46,31 +47,37 @@ public static class DependencyInjection
         services.AddScoped<ICacheService, RedisCacheService>();
 
         // MassTransit + RabbitMQ
-        services.AddMassTransit(x =>
+        // Registrar MassTransit solo si no estamos en modo lite
+        if (!config.GetValue<bool>("LiteMode"))
         {
-            x.AddConsumer<SeatReservedConsumer>();
-            x.AddConsumer<OrderExpiredConsumer>();
-            x.UsingRabbitMq((ctx, cfg) =>
+            services.AddMassTransit(x =>
             {
-                cfg.Host(rabbitHost, "/", h =>
+                x.AddConsumer<SeatReservedConsumer>();
+                x.AddConsumer<OrderExpiredConsumer>();
+                x.UsingRabbitMq((ctx, cfg) =>
                 {
-                    h.Username(config["RabbitMQ:User"] ?? "guest");
-                    h.Password(config["RabbitMQ:Pass"] ?? "guest");
+                    cfg.Host(config["RabbitMQ:Host"], "/", h =>
+                    {
+                        h.Username(config["RabbitMQ:User"] ?? "guest");
+                        h.Password(config["RabbitMQ:Pass"] ?? "guest");
+                    });
+                    cfg.ConfigureEndpoints(ctx);
                 });
-                cfg.ConfigureEndpoints(ctx);
             });
-        });
+        }
 
         // Hangfire
-        services.AddHangfire(hf =>
-            hf.UsePostgreSqlStorage(options =>
-            {
-                options.UseNpgsqlConnection(pgConn);
-                // Puedes agregar más opciones aquí si lo necesitas
-            }));
-        services.AddHangfireServer();
-
-
+        if (!config.GetValue<bool>("LiteMode"))
+        {
+            services.AddHangfire(hf =>
+                hf.UsePostgreSqlStorage(options =>
+                {
+                    options.UseNpgsqlConnection(pgConn);
+                }));
+            services.AddHangfireServer();
+            services.AddScoped<OutboxPublisherJob>();
+            services.AddScoped<ReservationExpiryJob>();
+        }
 
         // Background jobs
         services.AddScoped<OutboxPublisherJob>();
