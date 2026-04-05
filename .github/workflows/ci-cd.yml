@@ -100,12 +100,6 @@ jobs:
           name: test-results
           path: "**/*.trx"
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          directory: ./coverage
-          fail_ci_if_error: true
-
   security-scan:
     name: Security & dependency audit
     runs-on: ubuntu-latest
