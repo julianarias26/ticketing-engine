@@ -1,0 +1,24 @@
+# Build output
+bin/
+obj/
+out/
+publish/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+.idea/
+
+# Coverage
+coverage/
+*.trx
+*.xml
+
+# Docker
+*.env.local
+
+# OS
+.DS_Store
+Thumbs.db
