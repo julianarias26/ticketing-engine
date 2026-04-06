@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: ticketing-engine
+    runtime: dotnet
+    buildCommand: dotnet publish src/TicketingEngine.API/TicketingEngine.API.csproj -c Release -o out
+    startCommand: dotnet out/TicketingEngine.API.dll
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production

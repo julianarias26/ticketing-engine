@@ -17,15 +17,6 @@ using TicketingEngine.Infrastructure.Jobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Serilog ─────────────────────────────────────────────────────────────────
-Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .Enrich.WithProperty("Application", "TicketingEngine")
-    .WriteTo.Console()
-    .WriteTo.Seq(builder.Configuration["Seq:Url"] ?? "http://localhost:5341")
-    .CreateLogger();
-
 builder.Host.UseSerilog();
 
 // ── Application Services ─────────────────────────────────────────────────────
@@ -76,13 +67,6 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// ── SignalR ───────────────────────────────────────────────────────────────────
-builder.Services
-    .AddSignalR(opts =>
-    {
-        opts.EnableDetailedErrors = builder.Environment.IsDevelopment();
-        opts.KeepAliveInterval = TimeSpan.FromSeconds(10);
-    });
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect(

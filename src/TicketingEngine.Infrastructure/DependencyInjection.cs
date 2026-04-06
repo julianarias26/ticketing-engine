@@ -46,45 +46,9 @@ public static class DependencyInjection
             opts.Configuration = redisConn);
         services.AddScoped<ICacheService, RedisCacheService>();
 
-        // MassTransit + RabbitMQ
-        // Registrar MassTransit solo si no estamos en modo lite
-        if (!config.GetValue<bool>("LiteMode"))
-        {
-            services.AddMassTransit(x =>
-            {
-                x.AddConsumer<SeatReservedConsumer>();
-                x.AddConsumer<OrderExpiredConsumer>();
-                x.UsingRabbitMq((ctx, cfg) =>
-                {
-                    cfg.Host(config["RabbitMQ:Host"], "/", h =>
-                    {
-                        h.Username(config["RabbitMQ:User"] ?? "guest");
-                        h.Password(config["RabbitMQ:Pass"] ?? "guest");
-                    });
-                    cfg.ConfigureEndpoints(ctx);
-                });
-            });
-        }
-
-        // Hangfire
-        if (!config.GetValue<bool>("LiteMode"))
-        {
-            services.AddHangfire(hf =>
-                hf.UsePostgreSqlStorage(options =>
-                {
-                    options.UseNpgsqlConnection(pgConn);
-                }));
-            services.AddHangfireServer();
-            services.AddScoped<OutboxPublisherJob>();
-            services.AddScoped<ReservationExpiryJob>();
-        }
-
         // Background jobs
         services.AddScoped<OutboxPublisherJob>();
         services.AddScoped<ReservationExpiryJob>();
-
-        // Observabilidad
-        services.AddObservability(config);
 
         return services;
     }
